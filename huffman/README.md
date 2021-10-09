@@ -12,7 +12,7 @@ Three binaries:
 
 ## Benchmarks
 
-| file                                                            | source file size | compressed file size | compressed (in times) | compressing time |
-| :-------------------------------------------------------------- | :--------------- | :------------------- | :-------------------- | :--------------- |
-| war and peace (text)                                            | 3.12 Mb          | 1.81 Mb              | 1.725                 | 2s 318ms         |
-| [enwik8](http://www.mattmahoney.net/dc/textdata.html) test data | 95.37Mb          | 60.92Mb              | 1.565                 | 71s 370ms        |
+| file                                                            | source file size | compressed file size | compressed (in times) | compressing time | decompressing time |
+| :-------------------------------------------------------------- | :--------------- | :------------------- | :-------------------- | :--------------- | :----------------- |
+| war and peace                                                   | 3.12 Mb          | 1.81 Mb              | 1.725                 | 2s 318ms         | 1s 351ms           |
+| [enwik8](http://www.mattmahoney.net/dc/textdata.html) test data | 95.37Mb          | 60.92Mb              | 1.565                 | 71s 370ms        | 35s 172ms          |
