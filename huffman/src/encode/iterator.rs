@@ -1,11 +1,11 @@
+use bit_vec::BitVec;
 use std::collections::HashMap;
 
 use crate::byte_processor::{BoxedByteIterator, Error, Result};
-use crate::common::Code;
 
 pub fn encoded_iterator(
     input_iter: BoxedByteIterator,
-    codes: HashMap<u8, Code>,
+    codes: HashMap<u8, BitVec>,
 ) -> impl Iterator<Item = Result<u8>> {
     ByteIterator::new(Box::new(EncodingIterator { input_iter, codes }))
 }
@@ -15,15 +15,9 @@ struct ByteIterator {
 }
 
 impl ByteIterator {
-    fn new(input_iterator: Box<dyn Iterator<Item = Result<Vec<bool>>>>) -> ByteIterator {
+    fn new(input_iterator: Box<dyn Iterator<Item = Result<BitVec>>>) -> ByteIterator {
         ByteIterator {
-            input_iterator: Box::new(input_iterator.flat_map(|x| {
-                let result: Box<dyn Iterator<Item = Result<bool>>> = match x {
-                    Err(err) => Box::new(std::iter::once(Err(err))),
-                    Ok(vec) => Box::new(vec.into_iter().map(|x| Ok(x))),
-                };
-                result
-            })),
+            input_iterator: Box::new(input_iterator.flat_map(|x| x.into_iter().flatten().map(&Ok))),
         }
     }
 }
@@ -51,11 +45,11 @@ impl Iterator for ByteIterator {
 
 struct EncodingIterator {
     input_iter: Box<dyn Iterator<Item = Result<u8>>>,
-    codes: HashMap<u8, Code>,
+    codes: HashMap<u8, BitVec>,
 }
 
 impl Iterator for EncodingIterator {
-    type Item = Result<Vec<bool>>;
+    type Item = Result<BitVec>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.input_iter.next() {

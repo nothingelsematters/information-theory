@@ -1,9 +1,9 @@
+use bit_vec::BitVec;
 use priority_queue::PriorityQueue;
 use std::collections::HashMap;
-
 mod iterator;
 use crate::byte_processor::{BoxedByteIterator, ByteProcessor, Result};
-use crate::common::{Code, CodeDescriptor, Header};
+use crate::common::{CodeDescriptor, Header};
 
 #[derive(PartialEq, Eq, Hash)]
 enum HuffmanNode {
@@ -11,8 +11,8 @@ enum HuffmanNode {
     InnerVertex(Box<HuffmanNode>, Box<HuffmanNode>),
 }
 
-fn vec_with<T: Clone>(vec: &Vec<T>, element: T) -> Vec<T> {
-    let mut new_vec = vec.to_vec();
+fn vec_with(vec: &BitVec, element: bool) -> BitVec {
+    let mut new_vec = vec.clone();
     new_vec.push(element);
     new_vec
 }
@@ -40,7 +40,7 @@ impl Encoder {
         Ok(letter_frequency)
     }
 
-    fn build_codes(letter_frequency: &HashMap<u8, u64>) -> HashMap<u8, Code> {
+    fn build_codes(letter_frequency: &HashMap<u8, u64>) -> HashMap<u8, BitVec> {
         let mut queue =
             PriorityQueue::<Box<HuffmanNode>, i64>::with_capacity(letter_frequency.len());
 
@@ -63,11 +63,11 @@ impl Encoder {
         }
 
         let (root, _) = queue.pop().unwrap();
-        Encoder::update_codes(&mut codes, root, vec![]);
+        Encoder::update_codes(&mut codes, root, BitVec::new());
         codes
     }
 
-    fn update_codes(codes: &mut HashMap<u8, Code>, node: Box<HuffmanNode>, code: Code) {
+    fn update_codes(codes: &mut HashMap<u8, BitVec>, node: Box<HuffmanNode>, code: BitVec) {
         match *node {
             HuffmanNode::Leaf(letter) => {
                 codes.insert(letter, code);
@@ -82,12 +82,12 @@ impl Encoder {
     // TODO adequate header dump
     fn header_iter(
         letter_frequency: HashMap<u8, u64>,
-        codes: &HashMap<u8, Code>,
+        codes: &HashMap<u8, BitVec>,
     ) -> impl Iterator<Item = u8> + 'static {
         let mut code_descriptors = Vec::new();
         for (k, v) in codes.iter() {
             code_descriptors.push(CodeDescriptor {
-                code: v.to_vec(),
+                code: v.iter().collect(),
                 letter: *k,
             });
         }
@@ -116,7 +116,7 @@ impl Encoder {
     fn iter(
         letter_frequency: HashMap<u8, u64>,
         input_iter: impl Iterator<Item = Result<u8>> + 'static,
-        codes: HashMap<u8, Code>,
+        codes: HashMap<u8, BitVec>,
     ) -> impl Iterator<Item = Result<u8>> {
         let header_iter = Encoder::header_iter(letter_frequency, &codes).map(|x| Ok(x));
         let coded_iter = iterator::encoded_iterator(Box::new(input_iter), codes);
@@ -136,7 +136,7 @@ mod tests {
                 $(
                     bytes.push($x);
                 )*
-                let result: Vec<bool> = bytes.iter().map(|x| *x != 0).collect();
+                let result: BitVec = bytes.iter().map(|x| *x != 0).collect();
                 result
             }
         };
@@ -212,6 +212,6 @@ mod tests {
         let expected =
             code![1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 
-        assert!(to_bits(encoded).ends_with(&expected))
+        assert!(to_bits(encoded).ends_with(&expected.into_iter().collect::<Vec<bool>>().as_slice()))
     }
 }
