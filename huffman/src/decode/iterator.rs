@@ -1,7 +1,7 @@
+use bit_vec::BitVec;
 use std::collections::HashMap;
 
 use crate::byte_processor::{Error, Result};
-use crate::common::Code;
 
 struct BitIterator {
     input_iter: Box<dyn Iterator<Item = Result<u8>>>,
@@ -9,6 +9,18 @@ struct BitIterator {
     current_position: u8,
     next: Option<u8>,
     last_byte_size: u8,
+}
+
+impl BitIterator {
+    fn new(input_iter: Box<dyn Iterator<Item = Result<u8>>>, last_byte_size: u8) -> BitIterator {
+        BitIterator {
+            input_iter,
+            last_byte_size,
+            current_position: 8,
+            current: 0,
+            next: None,
+        }
+    }
 }
 
 impl Iterator for BitIterator {
@@ -45,25 +57,17 @@ impl Iterator for BitIterator {
 
 pub struct DecoderIterator {
     input_iter: Box<dyn Iterator<Item = Result<bool>>>,
-    codes: HashMap<Code, u8>,
+    codes: HashMap<BitVec, u8>,
 }
 
 impl DecoderIterator {
     pub fn new(
-        codes: HashMap<Code, u8>,
+        codes: HashMap<BitVec, u8>,
         input_iter: Box<dyn Iterator<Item = Result<u8>>>,
         last_byte_size: u8,
     ) -> DecoderIterator {
-        let bit_iter = BitIterator {
-            input_iter,
-            last_byte_size,
-            current_position: 8,
-            current: 0,
-            next: None,
-        };
-
         DecoderIterator {
-            input_iter: Box::new(bit_iter),
+            input_iter: Box::new(BitIterator::new(input_iter, last_byte_size)),
             codes,
         }
     }
@@ -73,7 +77,7 @@ impl Iterator for DecoderIterator {
     type Item = Result<u8>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let mut current = Vec::new();
+        let mut current = BitVec::new();
         let mut ended_flag = true;
 
         loop {

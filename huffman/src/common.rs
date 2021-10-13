@@ -1,10 +1,8 @@
 use serde::{Deserialize, Serialize};
 
-pub type Code = Vec<bool>;
-
 #[derive(Serialize, Deserialize)]
 pub struct CodeDescriptor {
-    pub code: Code,
+    pub code: Vec<bool>,
     pub letter: u8,
 }
 

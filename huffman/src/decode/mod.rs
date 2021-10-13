@@ -1,8 +1,10 @@
 use std::collections::HashMap;
 
 mod iterator;
+use bit_vec::BitVec;
+
 use crate::byte_processor::{BoxedByteIterator, ByteProcessor, Error, Result};
-use crate::common::{Code, CodeDescriptor, Header};
+use crate::common::{CodeDescriptor, Header};
 
 pub struct Decoder {}
 
@@ -56,15 +58,20 @@ impl Decoder {
         }
     }
 
-    fn code_map(code_descriptors: Vec<CodeDescriptor>) -> HashMap<Code, u8> {
+    fn code_map(code_descriptors: Vec<CodeDescriptor>) -> HashMap<BitVec, u8> {
         code_descriptors
             .into_iter()
-            .map(|code_descriptor| (code_descriptor.code, code_descriptor.letter))
+            .map(|code_descriptor| {
+                (
+                    code_descriptor.code.into_iter().collect(),
+                    code_descriptor.letter,
+                )
+            })
             .collect()
     }
 
     fn iter(
-        codes: HashMap<Code, u8>,
+        codes: HashMap<BitVec, u8>,
         input_iter: BoxedByteIterator,
         last_byte_size: u8,
     ) -> impl Iterator<Item = Result<u8>> {

@@ -27,16 +27,14 @@ impl Iterator for ByteIterator {
 
     fn next(&mut self) -> Option<Self::Item> {
         let mut byte: u8 = 0;
-        let mut none = true;
 
         for i in 0..8 {
             match self.input_iterator.next() {
-                None if none => return None,
+                None if i == 0 => return None,
                 None => return Some(Ok(byte)),
                 Some(Err(err)) => return Some(Err(err)),
                 Some(Ok(bit)) => byte |= (bit as u8) << i,
             }
-            none = false;
         }
 
         Some(Ok(byte))
