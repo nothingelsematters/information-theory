@@ -36,10 +36,10 @@ pub fn main() {
         .len();
 
     println!(
-        " source len: {} bytes\n  coded len: {} bytes\ncompression: {}\n       time: {}s {}ms",
+        " source len: {} bytes\n  coded len: {} bytes\ncompression: {:.02}%\n       time: {}s {}ms",
         source_len,
         coded_len,
-        (source_len as f64) / (coded_len as f64),
+        ((coded_len as f64) / (source_len as f64)) * 100.0,
         time.as_secs(),
         time.subsec_millis(),
     );
