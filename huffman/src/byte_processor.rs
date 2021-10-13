@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::{BufWriter, Error as IoError, Read, Write};
+use std::io::{BufReader, BufWriter, Error as IoError, Read, Write};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Error {
@@ -32,10 +32,9 @@ pub trait ByteProcessor {
 
     fn process_file(input_file_path: &str) -> Result<BoxedByteIterator> {
         Self::process(|| {
-            let iter = File::open(input_file_path)?
-                .bytes()
-                .into_iter()
-                .map(|result| result.map_err(Error::from));
+            let file = File::open(input_file_path)?;
+            let buf = BufReader::new(file);
+            let iter = buf.bytes().map(|result| result.map_err(Error::from));
             Ok(Box::new(iter))
         })
     }
