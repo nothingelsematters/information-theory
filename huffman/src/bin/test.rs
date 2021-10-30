@@ -1,4 +1,3 @@
-use huffman::{byte_processor::ByteProcessor, encode::Encoder};
 use std::fs::File;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -19,13 +18,7 @@ pub fn main() {
 
     let start = get_millis();
 
-    let coded_len = match Encoder::process_file(input_file_path) {
-        Err(err) => {
-            println!("{:#?}", err);
-            return;
-        }
-        Ok(iter) => iter.count(),
-    };
+    let coded_len = huffman::encode(|| compress_utils::file::file_iter(input_file_path)).count();
 
     let time = get_millis() - start;
 

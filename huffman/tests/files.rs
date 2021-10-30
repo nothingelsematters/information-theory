@@ -1,22 +1,25 @@
-use huffman::byte_processor::{ByteProcessor, Error, Result};
-use huffman::decode::Decoder;
-use huffman::encode::Encoder;
+use huffman::Result;
 use std::fs::File;
 use std::io::Read;
 
-fn file_iter(input_file_name: &str) -> Result<Box<dyn Iterator<Item = Result<u8>>>> {
-    let file = File::open(format!("files/{}", input_file_name))?;
-    let iter = file.bytes().into_iter().map(|result| {
-        result.map_err(|err| Error {
-            message: err.to_string(),
-        })
-    });
-    Ok(Box::new(iter))
+fn file_iter(input_file_name: &str) -> Box<dyn Iterator<Item = u8>> {
+    let file = match File::open(format!("files/{}", input_file_name)) {
+        Err(err) => panic!("File not found: {}", err),
+        Ok(file) => file,
+    };
+
+    let iter = file
+        .bytes()
+        .into_iter()
+        .take_while(|x| x.is_ok())
+        .map(|x| x.unwrap());
+    Box::new(iter)
 }
 
 fn test_file(input_file_path: &str) -> Result<()> {
-    let decoded_iter = Decoder::process(|| Encoder::process(|| file_iter(input_file_path)))?;
-    assert!(file_iter(input_file_path)?.eq(decoded_iter));
+    let mut encoded = huffman::encode(|| file_iter(input_file_path));
+    let decoded_iter = huffman::decode(&mut encoded).unwrap()?;
+    assert!(file_iter(input_file_path).map(Ok).eq(decoded_iter));
     Ok(())
 }
 

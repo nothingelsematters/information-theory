@@ -1,11 +1,11 @@
 [package]
-name = "huffman"
+name = "burrows-wheeler"
 version = "0.1.0"
 authors = ["Simon <Simon Naumov>"]
 edition = "2018"
 
 [lib]
-name = "huffman"
+name = "burrows_wheeler"
 test = true
 
 [dependencies]
@@ -19,3 +19,4 @@ serde_json = "1.0"
 
 # local dependencies
 compress-utils = { path = "../compress-utils" }
+huffman = { path = "../huffman" }

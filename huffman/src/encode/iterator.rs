@@ -1,29 +1,28 @@
+use crate::BoxedByteIterator;
 use bit_vec::BitVec;
 use std::collections::HashMap;
-
-use crate::byte_processor::{BoxedByteIterator, Error, Result};
 
 pub fn encoded_iterator(
     input_iter: BoxedByteIterator,
     codes: HashMap<u8, BitVec>,
-) -> impl Iterator<Item = Result<u8>> {
+) -> impl Iterator<Item = u8> {
     ByteIterator::new(Box::new(EncodingIterator { input_iter, codes }))
 }
 
 struct ByteIterator {
-    input_iterator: Box<dyn Iterator<Item = Result<bool>>>,
+    input_iterator: Box<dyn Iterator<Item = bool>>,
 }
 
 impl ByteIterator {
-    fn new(input_iterator: Box<dyn Iterator<Item = Result<BitVec>>>) -> ByteIterator {
+    fn new(input_iterator: Box<dyn Iterator<Item = BitVec>>) -> ByteIterator {
         ByteIterator {
-            input_iterator: Box::new(input_iterator.flat_map(|x| x.into_iter().flatten().map(&Ok))),
+            input_iterator: Box::new(input_iterator.flatten()),
         }
     }
 }
 
 impl Iterator for ByteIterator {
-    type Item = Result<u8>;
+    type Item = u8;
 
     fn next(&mut self) -> Option<Self::Item> {
         let mut byte: u8 = 0;
@@ -31,31 +30,29 @@ impl Iterator for ByteIterator {
         for i in 0..8 {
             match self.input_iterator.next() {
                 None if i == 0 => return None,
-                None => return Some(Ok(byte)),
-                Some(Err(err)) => return Some(Err(err)),
-                Some(Ok(bit)) => byte |= (bit as u8) << i,
+                None => return Some(byte),
+                Some(bit) => byte |= (bit as u8) << i,
             }
         }
 
-        Some(Ok(byte))
+        Some(byte)
     }
 }
 
 struct EncodingIterator {
-    input_iter: Box<dyn Iterator<Item = Result<u8>>>,
+    input_iter: BoxedByteIterator,
     codes: HashMap<u8, BitVec>,
 }
 
 impl Iterator for EncodingIterator {
-    type Item = Result<BitVec>;
+    type Item = BitVec;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.input_iter.next() {
             None => None,
-            Some(Err(err)) => Some(Err(err)),
-            Some(Ok(byte)) => match self.codes.get(&byte) {
-                None => Some(Err(Error::new("Unexpected letter met"))),
-                Some(code) => Some(Ok(code.clone())),
+            Some(byte) => match self.codes.get(&byte) {
+                None => panic!("Data changed invalidating header: unexpected letter"),
+                Some(code) => Some(code.clone()),
             },
         }
     }

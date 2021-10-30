@@ -1,20 +1,25 @@
+use crate::{BoxedByteIterator, Error, Result};
 use bit_vec::BitVec;
 use std::collections::HashMap;
 
-use crate::byte_processor::{Error, Result};
-
-struct BitIterator {
-    input_iter: Box<dyn Iterator<Item = Result<u8>>>,
+struct BitIterator<'a> {
+    input_iter: &'a mut BoxedByteIterator,
     current: u8,
     current_position: u8,
     next: Option<u8>,
+    byte_size: usize,
     last_byte_size: u8,
 }
 
-impl BitIterator {
-    fn new(input_iter: Box<dyn Iterator<Item = Result<u8>>>, last_byte_size: u8) -> BitIterator {
+impl<'a> BitIterator<'a> {
+    fn new(
+        input_iter: &'a mut BoxedByteIterator,
+        byte_size: usize,
+        last_byte_size: u8,
+    ) -> BitIterator {
         BitIterator {
             input_iter,
+            byte_size,
             last_byte_size,
             current_position: 8,
             current: 0,
@@ -23,27 +28,29 @@ impl BitIterator {
     }
 }
 
-impl Iterator for BitIterator {
+impl<'a> Iterator for BitIterator<'a> {
     type Item = Result<bool>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.current_position == 8 {
+            self.byte_size -= 1;
+
             self.current = if let Some(byte) = self.next {
                 byte
             } else {
                 match self.input_iter.next() {
                     None => return None,
-                    Some(Err(err)) => return Some(Err(err)),
-                    Some(Ok(byte)) => byte,
+                    Some(byte) => byte,
                 }
             };
 
-            self.next = match self.input_iter.next() {
-                None => None,
-                Some(Err(err)) => return Some(Err(err)),
-                Some(Ok(byte)) => Some(byte),
-            };
-            self.current_position = 0;
+            if self.byte_size > 0 {
+                self.next = match self.input_iter.next() {
+                    None => None,
+                    Some(byte) => Some(byte),
+                };
+                self.current_position = 0;
+            }
         }
 
         if self.next == None && self.last_byte_size == self.current_position {
@@ -55,25 +62,26 @@ impl Iterator for BitIterator {
     }
 }
 
-pub struct DecoderIterator {
-    input_iter: Box<dyn Iterator<Item = Result<bool>>>,
+pub struct DecoderIterator<'a> {
+    input_iter: Box<BitIterator<'a>>,
     codes: HashMap<BitVec, u8>,
 }
 
-impl DecoderIterator {
+impl<'a> DecoderIterator<'a> {
     pub fn new(
         codes: HashMap<BitVec, u8>,
-        input_iter: Box<dyn Iterator<Item = Result<u8>>>,
+        input_iter: &'a mut Box<dyn Iterator<Item = u8>>,
+        byte_size: usize,
         last_byte_size: u8,
     ) -> DecoderIterator {
         DecoderIterator {
-            input_iter: Box::new(BitIterator::new(input_iter, last_byte_size)),
+            input_iter: Box::new(BitIterator::new(input_iter, byte_size, last_byte_size)),
             codes,
         }
     }
 }
 
-impl Iterator for DecoderIterator {
+impl<'a> Iterator for DecoderIterator<'a> {
     type Item = Result<u8>;
 
     fn next(&mut self) -> Option<Self::Item> {
