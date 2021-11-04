@@ -1,7 +1,7 @@
 use self::iterator::DecoderIterator;
-use crate::common::Header;
-use crate::BoxedByteIterator;
-use crate::{Error, Result};
+use super::common::Header;
+use super::BoxedByteIterator;
+use crate::result::{Error, Result};
 use bit_vec::BitVec;
 use std::collections::HashMap;
 

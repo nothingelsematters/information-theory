@@ -1,4 +1,4 @@
-use crate::{BoxedByteIterator, Error, Result};
+use super::{BoxedByteIterator, Error, Result};
 use bit_vec::BitVec;
 use std::collections::HashMap;
 

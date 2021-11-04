@@ -1,10 +1,8 @@
-mod bwt;
+mod common;
 mod decode;
 mod encode;
-mod huffman;
-mod mtf;
-mod result;
-pub mod utils;
 
 pub use decode::decode;
 pub use encode::encode;
+
+pub type BoxedByteIterator = Box<dyn Iterator<Item = u8>>;

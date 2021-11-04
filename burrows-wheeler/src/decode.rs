@@ -1,5 +1,5 @@
-use crate::bwt;
-use huffman::Result;
+use crate::result::Result;
+use crate::{bwt, huffman, mtf};
 use std::io::Read;
 use std::iter::once;
 
@@ -19,7 +19,7 @@ impl DecodeIterator {
     }
 }
 
-impl<'a> Iterator for DecodeIterator {
+impl Iterator for DecodeIterator {
     type Item = Box<dyn Iterator<Item = Result<u8>>>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -27,13 +27,13 @@ impl<'a> Iterator for DecodeIterator {
             None => return None,
             Some(iter) => match iter {
                 Ok(iter) => {
-                    let vec: Result<Vec<u8>> = iter.collect();
-                    let vec = match vec {
+                    let vec = match iter.collect::<Result<Vec<u8>>>() {
                         Ok(vec) => vec,
                         Err(err) => return Some(Box::new(once(Err(err)))),
                     };
 
-                    let debwted = bwt::reverse(&vec, vec![] /* TODO ?? */);
+                    let demtfed = mtf::reverse(&vec);
+                    let debwted = bwt::reverse(&demtfed, 0 /* TODO ?? */);
                     Some(Box::new(debwted.into_iter().map(Ok)))
                 }
                 Err(err) => Some(Box::new(once(Err(err)))),

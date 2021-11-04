@@ -1,14 +1,5 @@
 use std::io::Error as IoError;
 
-mod common;
-pub mod decode;
-mod encode;
-
-pub use decode::decode;
-pub use encode::encode;
-
-pub type BoxedByteIterator = Box<dyn Iterator<Item = u8>>;
-
 #[derive(Debug, PartialEq, Eq)]
 pub struct Error {
     pub message: String,

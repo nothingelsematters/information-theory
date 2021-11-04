@@ -1,5 +1,5 @@
-use crate::common::{CodeDescriptor, Header};
-use crate::BoxedByteIterator;
+use super::common::{CodeDescriptor, Header};
+use super::BoxedByteIterator;
 use bit_vec::BitVec;
 use priority_queue::PriorityQueue;
 use std::collections::HashMap;
@@ -122,7 +122,23 @@ fn iter(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use maplit::hashmap;
+
+    macro_rules! hashmap {
+        (@single $($x:tt)*) => (());
+        (@count $($rest:expr),*) => (<[()]>::len(&[$(hashmap!(@single $rest)),*]));
+
+        ($($key:expr => $value:expr,)+) => { hashmap!($($key => $value),+) };
+        ($($key:expr => $value:expr),*) => {
+            {
+                let cap = hashmap!(@count $($key),*);
+                let mut map = HashMap::with_capacity(cap);
+                $(
+                    map.insert($key, $value);
+                )*
+                map
+            }
+        };
+    }
 
     macro_rules! code {
         ( $( $x:expr ),* ) => {
