@@ -1,6 +1,7 @@
 use self::iterator::DecoderIterator;
 use super::common::Header;
 use super::BoxedByteIterator;
+use crate::config::Index;
 use crate::result::{Error, Result};
 use bit_vec::BitVec;
 use std::collections::HashMap;
@@ -9,7 +10,7 @@ pub mod iterator;
 
 pub fn decode<'a>(
     input_iter: &'a mut Box<dyn Iterator<Item = u8>>,
-) -> Option<Result<Box<DecoderIterator<'a>>>> {
+) -> Option<Result<(Box<DecoderIterator<'a>>, Index)>> {
     let header = decode_header(input_iter)?;
     let header = match header {
         Ok(header) => header,
@@ -27,10 +28,9 @@ pub fn decode<'a>(
         })
         .collect();
 
-    let iter =
-        iterator::DecoderIterator::new(codes, input_iter, header.byte_size, header.last_byte_size);
+    let iter = iterator::DecoderIterator::new(codes, input_iter, header.bit_size);
 
-    Some(Ok(Box::new(iter)))
+    Some(Ok((Box::new(iter), header.initial)))
 }
 
 // TODO adequate header decoding
@@ -64,18 +64,17 @@ fn decode_header(input_iter: &mut BoxedByteIterator) -> Option<Result<Header>> {
 
 #[cfg(test)]
 mod tests {
-    // use crate::huffman::byte_processor::{ByteProcessor, Result};
-    // use crate::huffman::decode::Decoder;
-    // use crate::huffman::encode::Encoder;
+    use super::*;
+    use crate::huffman::encode;
 
-    // #[test]
-    // fn decode_encoded() -> Result<()> {
-    //     let input = "abbcccddddd";
-    //     let decoded_iter = process(|| {
-    //         Encoder::process(|| Ok(Box::new(input.bytes().into_iter().map(|x| Ok(x)))))
-    //     })?;
-    //     let decoded: Vec<u8> = decoded_iter.map(|x| x.unwrap()).collect();
-    //     assert_eq!(Ok(String::from(input)), String::from_utf8(decoded));
-    //     Ok(())
-    // }
+    #[test]
+    fn decode_encoded() -> Result<()> {
+        let input = "abbcccdddddeeoifhweag128138y2o".as_bytes();
+        let mut encoded_iter =
+            &mut Box::new(encode(|| Box::new(input.iter().map(|x| x.clone())), 0));
+        let (decoded_iter, _) = decode(&mut encoded_iter).unwrap()?;
+        let decoded: Vec<u8> = decoded_iter.map(|x| x.unwrap()).collect();
+        assert_eq!(input, &decoded);
+        Ok(())
+    }
 }

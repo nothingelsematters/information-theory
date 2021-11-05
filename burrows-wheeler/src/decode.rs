@@ -26,18 +26,39 @@ impl Iterator for DecodeIterator {
         match huffman::decode(&mut self.input_iter) {
             None => return None,
             Some(iter) => match iter {
-                Ok(iter) => {
+                Ok((iter, initial)) => {
                     let vec = match iter.collect::<Result<Vec<u8>>>() {
                         Ok(vec) => vec,
                         Err(err) => return Some(Box::new(once(Err(err)))),
                     };
 
                     let demtfed = mtf::reverse(&vec);
-                    let debwted = bwt::reverse(&demtfed, 0 /* TODO ?? */);
+                    let debwted = bwt::reverse(&demtfed, initial);
                     Some(Box::new(debwted.into_iter().map(Ok)))
                 }
                 Err(err) => Some(Box::new(once(Err(err)))),
             },
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::io::Cursor;
+
+    use super::*;
+    use crate::encode;
+
+    #[test]
+    fn decode_encoded() {
+        let string = "qwertyuiopasdfghjkfwjeyyyyyyyqowoooolzxcvbnm,wwert6y7u89".as_bytes();
+
+        let encoded = encode(Box::new(string)).collect::<Vec<_>>();
+        let encoded = Cursor::new(encoded);
+        let decoded = decode(Box::new(encoded))
+            .collect::<Result<Vec<_>>>()
+            .unwrap();
+
+        assert_eq!(&decoded, string)
     }
 }

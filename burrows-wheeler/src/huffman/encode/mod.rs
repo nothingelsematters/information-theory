@@ -1,18 +1,19 @@
 use super::common::{CodeDescriptor, Header};
 use super::BoxedByteIterator;
+use crate::config::Index;
 use bit_vec::BitVec;
 use priority_queue::PriorityQueue;
 use std::collections::HashMap;
 
 mod iterator;
 
-pub fn encode<F>(input_iter_supplier: F) -> BoxedByteIterator
+pub fn encode<F>(input_iter_supplier: F, initial: Index) -> BoxedByteIterator
 where
     F: Fn() -> BoxedByteIterator,
 {
     let frequencies = count_frequency(input_iter_supplier());
     let codes = build_codes(&frequencies);
-    let iter = iter(frequencies, input_iter_supplier(), codes);
+    let iter = iter(frequencies, input_iter_supplier(), codes, initial);
     Box::new(iter)
 }
 
@@ -78,6 +79,7 @@ fn update_codes(codes: &mut HashMap<u8, BitVec>, node: Box<HuffmanNode>, code: B
 fn header_iter(
     letter_frequency: HashMap<u8, u64>,
     codes: &HashMap<u8, BitVec>,
+    initial: Index,
 ) -> impl Iterator<Item = u8> + 'static {
     let mut code_descriptors = Vec::new();
     for (k, v) in codes.iter() {
@@ -90,17 +92,11 @@ fn header_iter(
     for (k, v) in letter_frequency {
         bit_size += codes[&k].len() * (v as usize);
     }
-    let last_byte_size = (bit_size % 8) as u8;
-    let (byte_size, last_byte_size) = if last_byte_size == 0 {
-        (bit_size / 8, 8)
-    } else {
-        (bit_size / 8 + 1, last_byte_size)
-    };
 
     let header = Header {
         code_descriptors,
-        byte_size,
-        last_byte_size,
+        bit_size,
+        initial,
     };
 
     serde_json::to_string(&header)
@@ -113,8 +109,9 @@ fn iter(
     letter_frequency: HashMap<u8, u64>,
     input_iter: impl Iterator<Item = u8> + 'static,
     codes: HashMap<u8, BitVec>,
+    initial: Index,
 ) -> impl Iterator<Item = u8> {
-    let header_iter = header_iter(letter_frequency, &codes);
+    let header_iter = header_iter(letter_frequency, &codes, initial);
     let coded_iter = iterator::encoded_iterator(Box::new(input_iter), codes);
     header_iter.chain(coded_iter)
 }
@@ -212,7 +209,7 @@ mod tests {
         };
 
         let input = "abbcccddddddddd";
-        let encoded: Vec<u8> = iter(HashMap::new(), input.bytes(), codes).collect();
+        let encoded: Vec<u8> = iter(HashMap::new(), input.bytes(), codes, 0).collect();
 
         let expected =
             code![1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];

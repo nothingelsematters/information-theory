@@ -29,7 +29,7 @@ pub fn write_iter<'a>(
     output_file_path: &str,
     iter: Box<dyn Iterator<Item = u8> + 'a>,
 ) -> IoResult<()> {
-    let mut buf_writer = BufWriter::new(File::open(output_file_path)?);
+    let mut buf_writer = BufWriter::new(File::create(output_file_path)?);
     iter.map(|x| buf_writer.write(&[x]).map(|_| ())).collect()
 }
 
@@ -37,7 +37,7 @@ pub fn write_iter_result<'a, E: Debug>(
     output_file_path: &str,
     iter: Box<dyn Iterator<Item = Result<u8, E>> + 'a>,
 ) -> IoResult<()> {
-    let mut buf_writer = BufWriter::new(File::open(output_file_path)?);
+    let mut buf_writer = BufWriter::new(File::create(output_file_path)?);
 
     for byte in iter {
         buf_writer.write(&[byte.unwrap()])?;

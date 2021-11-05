@@ -1,9 +1,9 @@
-use crate::{bwt, huffman, mtf};
+use crate::{bwt, config::WINDOW_SIZE, huffman, mtf};
 use std::io::Read;
 use std::io::Result as IoResult;
 
 pub fn encode(read: Box<dyn Read>) -> Box<impl Iterator<Item = u8>> {
-    let iter = WindowedIterator::from_read(100 * 1024, read)
+    let iter = WindowedIterator::from_read(WINDOW_SIZE, read)
         .take_while(|x| x.is_ok())
         .map(|x| x.unwrap())
         .flat_map(encode_block);
@@ -11,9 +11,9 @@ pub fn encode(read: Box<dyn Read>) -> Box<impl Iterator<Item = u8>> {
 }
 
 fn encode_block(block: Vec<u8>) -> Box<(dyn Iterator<Item = u8> + 'static)> {
-    let (bwted, _initial) = bwt::apply(&block);
+    let (bwted, initial) = bwt::apply(&block);
     let mtfed = mtf::apply(&bwted);
-    huffman::encode(|| Box::new(mtfed.clone().into_iter()))
+    huffman::encode(|| Box::new(mtfed.clone().into_iter()), initial)
 }
 
 pub struct WindowedIterator {

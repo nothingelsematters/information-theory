@@ -7,20 +7,14 @@ struct BitIterator<'a> {
     current: u8,
     current_position: u8,
     next: Option<u8>,
-    byte_size: usize,
-    last_byte_size: u8,
+    bit_size: usize,
 }
 
 impl<'a> BitIterator<'a> {
-    fn new(
-        input_iter: &'a mut BoxedByteIterator,
-        byte_size: usize,
-        last_byte_size: u8,
-    ) -> BitIterator {
+    fn new(input_iter: &'a mut BoxedByteIterator, bit_size: usize) -> BitIterator {
         BitIterator {
             input_iter,
-            byte_size,
-            last_byte_size,
+            bit_size,
             current_position: 8,
             current: 0,
             next: None,
@@ -32,9 +26,11 @@ impl<'a> Iterator for BitIterator<'a> {
     type Item = Result<bool>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.current_position == 8 {
-            self.byte_size -= 1;
+        if self.bit_size == 0 {
+            return None;
+        }
 
+        if self.current_position == 8 {
             self.current = if let Some(byte) = self.next {
                 byte
             } else {
@@ -44,20 +40,21 @@ impl<'a> Iterator for BitIterator<'a> {
                 }
             };
 
-            if self.byte_size > 0 {
+            if self.bit_size > 8 {
                 self.next = match self.input_iter.next() {
                     None => None,
                     Some(byte) => Some(byte),
                 };
-                self.current_position = 0;
             }
+            self.current_position = 0;
         }
 
-        if self.next == None && self.last_byte_size == self.current_position {
+        if self.bit_size == 0 {
             return None;
         }
         let bit = ((self.current >> self.current_position) & 1) != 0;
         self.current_position += 1;
+        self.bit_size -= 1;
         Some(Ok(bit))
     }
 }
@@ -71,11 +68,10 @@ impl<'a> DecoderIterator<'a> {
     pub fn new(
         codes: HashMap<BitVec, u8>,
         input_iter: &'a mut Box<dyn Iterator<Item = u8>>,
-        byte_size: usize,
-        last_byte_size: u8,
+        bit_size: usize,
     ) -> DecoderIterator {
         DecoderIterator {
-            input_iter: Box::new(BitIterator::new(input_iter, byte_size, last_byte_size)),
+            input_iter: Box::new(BitIterator::new(input_iter, bit_size)),
             codes,
         }
     }
