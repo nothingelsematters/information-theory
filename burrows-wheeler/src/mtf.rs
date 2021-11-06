@@ -1,7 +1,7 @@
 use atlist_rs::LinkedList;
 
 pub fn apply(buffer: &[u8]) -> Vec<u8> {
-    let mut alphabet: LinkedList<u8> = (0..255).collect();
+    let mut alphabet: LinkedList<u8> = (0..=255).collect();
 
     let mut output = Vec::with_capacity(buffer.len());
     for i in buffer {
@@ -22,7 +22,7 @@ pub fn apply(buffer: &[u8]) -> Vec<u8> {
 }
 
 pub fn reverse(buffer: &[u8]) -> Vec<u8> {
-    let mut alphabet: LinkedList<u8> = (0..255).collect();
+    let mut alphabet: LinkedList<u8> = (0..=255).collect();
 
     let mut output = Vec::with_capacity(buffer.len());
     for i in buffer {
