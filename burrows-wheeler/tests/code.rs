@@ -1,8 +1,6 @@
 use burrows_wheeler::{decode, encode};
-use std::{
-    fs::File,
-    io::{Cursor, Read},
-};
+use std::fs::File;
+use std::io::{Cursor, Read};
 
 #[test]
 fn war_and_peace_test() {

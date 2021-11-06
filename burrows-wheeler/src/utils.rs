@@ -1,8 +1,6 @@
-use std::{
-    fmt::Debug,
-    fs::File,
-    io::{BufReader, BufWriter, Read, Result as IoResult, Write},
-};
+use std::fmt::Debug;
+use std::fs::File;
+use std::io::{BufReader, BufWriter, Read, Result as IoResult, Write};
 
 pub fn launch<F>(function: F)
 where

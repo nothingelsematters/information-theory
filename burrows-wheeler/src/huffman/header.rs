@@ -1,7 +1,8 @@
 use super::iterator::BitIterator;
 use crate::config::Index;
 use bit_vec::BitVec;
-use std::{cmp::Ordering, collections::HashMap};
+use std::cmp::Ordering;
+use std::collections::HashMap;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct CodeDescriptor {
@@ -41,20 +42,13 @@ impl Header {
 
             match bit_compare {
                 Ordering::Equal if first_code.len() == second_code.len() => Ordering::Equal,
-                Ordering::Equal if first_code.len() > second_code.len() => {
-                    if first_code[min_len] == false {
-                        Ordering::Less
-                    } else {
-                        Ordering::Greater
-                    }
+                Ordering::Equal
+                    if (first_code.len() > second_code.len() && !first_code[min_len])
+                        || (first_code.len() < second_code.len() && second_code[min_len]) =>
+                {
+                    Ordering::Less
                 }
-                Ordering::Equal => {
-                    if first_code[min_len] == false {
-                        Ordering::Greater
-                    } else {
-                        Ordering::Less
-                    }
-                }
+                Ordering::Equal => Ordering::Greater,
                 otherwise @ _ => otherwise,
             }
         });

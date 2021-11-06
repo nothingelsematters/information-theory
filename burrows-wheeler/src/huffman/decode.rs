@@ -1,4 +1,5 @@
-use super::{header::Header, iterator::BitIterator};
+use super::header::Header;
+use super::iterator::BitIterator;
 use crate::config::Index;
 use crate::result::{Error, Result};
 use bit_vec::BitVec;
@@ -8,7 +9,6 @@ pub fn decode<'a>(
     input_iter: &'a mut Box<dyn Iterator<Item = u8>>,
 ) -> Option<Result<(Box<DecoderIterator<'a>>, Index)>> {
     let mut bit_iter = Box::new(BitIterator::new(input_iter, usize::MAX));
-
     let header = Header::decode(&mut bit_iter)?;
     bit_iter.bit_size(header.bit_size);
 
