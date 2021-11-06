@@ -1,23 +1,8 @@
 use crate::config::Index;
-use std::collections::HashMap;
+use std::{collections::HashMap, mem::swap};
 
 pub fn apply(buffer: &[u8]) -> (Vec<u8>, Index) {
-    // TODO use suffix array instead
-    let mut indices: Vec<usize> = (0..buffer.len()).collect();
-    indices.sort_by(|&x, &y| {
-        let mut i = x;
-        let mut j = y;
-        let mut count = 0;
-        let len = buffer.len();
-
-        while buffer[i] == buffer[j] && count < len {
-            i = (i + 1) % len;
-            j = (j + 1) % len;
-            count += 1;
-        }
-
-        buffer[i].cmp(&buffer[j])
-    });
+    let indices = sort_cyclic_shifts(buffer);
 
     let last_symbols = indices
         .iter()
@@ -27,6 +12,82 @@ pub fn apply(buffer: &[u8]) -> (Vec<u8>, Index) {
     let initial = indices.iter().position(|x| *x == 0).unwrap();
 
     (last_symbols, initial as Index)
+}
+
+fn sort_cyclic_shifts(buffer: &[u8]) -> Vec<usize> {
+    let n = buffer.len();
+    let alphabet = 256;
+    let mut p = vec![0; n];
+    let mut c = vec![0; n];
+    let mut cnt = vec![0; std::cmp::max(alphabet, n)];
+
+    for i in 0..n {
+        cnt[buffer[i] as usize] += 1;
+    }
+    for i in 1..alphabet {
+        cnt[i] += cnt[i - 1];
+    }
+    for i in 0..n {
+        cnt[buffer[i] as usize] -= 1;
+        p[cnt[buffer[i] as usize] as usize] = i;
+    }
+
+    c[p[0]] = 0;
+
+    let mut classes = 1;
+
+    for i in 1..n {
+        if buffer[p[i]] != buffer[p[i - 1]] {
+            classes += 1;
+        }
+        c[p[i]] = classes - 1;
+    }
+
+    let mut pn = vec![0; n];
+    let mut cn = vec![0; n];
+
+    let mut h = 0;
+
+    while (1 << h) < n {
+        for i in 0..n {
+            pn[i] = if (1 << h) > p[i] {
+                p[i] + n - (1 << h)
+            } else {
+                p[i] - (1 << h)
+            };
+        }
+
+        for i in 0..classes {
+            cnt[i] = 0;
+        }
+
+        for i in 0..n {
+            cnt[c[pn[i]]] += 1;
+        }
+        for i in 1..classes {
+            cnt[i] += cnt[i - 1];
+        }
+        for i in (0..n).rev() {
+            cnt[c[pn[i]]] -= 1;
+            p[cnt[c[pn[i]]]] = pn[i];
+        }
+        cn[p[0]] = 0;
+        classes = 1;
+
+        for i in 1..n {
+            let cur = (c[p[i]], c[(p[i] + (1 << h)) % n]);
+            let prev = (c[p[i - 1]], c[(p[i - 1] + (1 << h)) % n]);
+            if cur != prev {
+                classes += 1;
+            }
+            cn[p[i]] = classes - 1;
+        }
+        swap(&mut c, &mut cn);
+
+        h += 1;
+    }
+
+    p
 }
 
 pub fn reverse(buffer: &[u8], initial: Index) -> Vec<u8> {

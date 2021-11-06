@@ -1,11 +1,10 @@
-use super::common::{CodeDescriptor, Header};
+use super::header::Header;
 use super::BoxedByteIterator;
 use crate::config::Index;
+use crate::huffman::iterator::ByteIterator;
 use bit_vec::BitVec;
 use priority_queue::PriorityQueue;
 use std::collections::HashMap;
-
-mod iterator;
 
 pub fn encode<F>(input_iter_supplier: F, initial: Index) -> BoxedByteIterator
 where
@@ -75,45 +74,40 @@ fn update_codes(codes: &mut HashMap<u8, BitVec>, node: Box<HuffmanNode>, code: B
     }
 }
 
-// TODO adequate header dump
-fn header_iter(
-    letter_frequency: HashMap<u8, u64>,
-    codes: &HashMap<u8, BitVec>,
-    initial: Index,
-) -> impl Iterator<Item = u8> + 'static {
-    let mut code_descriptors = Vec::new();
-    for (k, v) in codes.iter() {
-        code_descriptors.push(CodeDescriptor {
-            code: v.iter().collect(),
-            letter: *k,
-        });
-    }
-    let mut bit_size = 0;
-    for (k, v) in letter_frequency {
-        bit_size += codes[&k].len() * (v as usize);
-    }
-
-    let header = Header {
-        code_descriptors,
-        bit_size,
-        initial,
-    };
-
-    serde_json::to_string(&header)
-        .unwrap()
-        .into_bytes()
-        .into_iter()
-}
-
 fn iter(
     letter_frequency: HashMap<u8, u64>,
     input_iter: impl Iterator<Item = u8> + 'static,
     codes: HashMap<u8, BitVec>,
     initial: Index,
 ) -> impl Iterator<Item = u8> {
-    let header_iter = header_iter(letter_frequency, &codes, initial);
-    let coded_iter = iterator::encoded_iterator(Box::new(input_iter), codes);
-    header_iter.chain(coded_iter)
+    let header = Header::encode(letter_frequency, &codes, initial);
+    let header_iter = std::iter::once(header);
+
+    let coded_iter = EncodingIterator {
+        input_iter: Box::new(input_iter),
+        codes,
+    };
+
+    ByteIterator::new(Box::new(header_iter.chain(coded_iter)))
+}
+
+struct EncodingIterator {
+    input_iter: BoxedByteIterator,
+    codes: HashMap<u8, BitVec>,
+}
+
+impl Iterator for EncodingIterator {
+    type Item = BitVec;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.input_iter.next() {
+            None => None,
+            Some(byte) => match self.codes.get(&byte) {
+                None => panic!("Data changed invalidating header: unexpected letter"),
+                Some(code) => Some(code.clone()),
+            },
+        }
+    }
 }
 
 #[cfg(test)]
@@ -148,19 +142,6 @@ mod tests {
                 result
             }
         };
-    }
-
-    fn to_bits(bytes: Vec<u8>) -> Vec<bool> {
-        bytes
-            .into_iter()
-            .flat_map(|x| {
-                let mut vec = Vec::with_capacity(8);
-                for i in 0..8 {
-                    vec.push(((x >> i) & 1) != 0);
-                }
-                vec.into_iter()
-            })
-            .collect()
     }
 
     #[test]
@@ -209,11 +190,15 @@ mod tests {
         };
 
         let input = "abbcccddddddddd";
-        let encoded: Vec<u8> = iter(HashMap::new(), input.bytes(), codes, 0).collect();
+        let encoded: Vec<u8> = iter(HashMap::new(), input.bytes(), codes, 0)
+            .skip(((Index::BITS + usize::BITS) / 8) as usize)
+            .collect();
 
-        let expected =
-            code![1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        let expected = vec![
+            0b10011010, 0b01101000, 0b10101100, 0b01100001, 0b10100011, 0b11111101, 0b00010101,
+            0b00000000,
+        ];
 
-        assert!(to_bits(encoded).ends_with(&expected.into_iter().collect::<Vec<bool>>().as_slice()))
+        assert_eq!(encoded, expected)
     }
 }
