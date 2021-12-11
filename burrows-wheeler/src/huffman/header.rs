@@ -49,7 +49,7 @@ impl Header {
                     Ordering::Less
                 }
                 Ordering::Equal => Ordering::Greater,
-                otherwise @ _ => otherwise,
+                otherwise => otherwise,
             }
         });
 
@@ -85,7 +85,7 @@ impl Header {
         }
     }
 
-    pub fn decode<'a>(input_iter: &mut Box<BitIterator<'a>>) -> Option<Header> {
+    pub fn decode(input_iter: &mut Box<BitIterator<'_>>) -> Option<Header> {
         let mut initial: Index = 0;
         for i in (0..Index::BITS).rev() {
             initial |= (input_iter.next()? as Index) << i;
@@ -100,7 +100,7 @@ impl Header {
         let mut current = BitVec::new();
 
         while {
-            while input_iter.next()? == false {
+            while !input_iter.next()? {
                 current.push(false);
             }
 
@@ -147,10 +147,7 @@ mod test {
     macro_rules! code {
         ( $( $x:expr ),* ) => {
             {
-                let mut bytes = Vec::new();
-                $(
-                    bytes.push($x);
-                )*
+                let bytes = vec![$($x,)*];
                 let result: BitVec = bytes.iter().map(|x| *x != 0).collect();
                 result
             }
@@ -178,18 +175,18 @@ mod test {
     fn encode_test() {
         let encoded = Header::encode(
             hashmap! {
-                'a' as u8 => 1,
-                'b' as u8 => 1,
-                'c' as u8 => 4,
-                'd' as u8 => 4,
-                'e' as u8 => 4,
+                b'a' => 1,
+                b'b' => 1,
+                b'c' => 4,
+                b'd' => 4,
+                b'e' => 4,
             },
             &hashmap! {
-                'a' as u8 => code![0, 0, 0],
-                'b' as u8 => code![0, 0, 1],
-                'c' as u8 => code![0, 1],
-                'd' as u8 => code![1, 0],
-                'e' as u8 => code![1, 1],
+                b'a' => code![0, 0, 0],
+                b'b' => code![0, 0, 1],
+                b'c' => code![0, 1],
+                b'd' => code![1, 0],
+                b'e' => code![1, 1],
             },
             2,
         );
@@ -223,23 +220,23 @@ mod test {
 
         let expected: Vec<CodeDescriptor> = vec![
             CodeDescriptor {
-                letter: 'a' as u8,
+                letter: b'a',
                 code: code![0, 0, 0],
             },
             CodeDescriptor {
-                letter: 'b' as u8,
+                letter: b'b',
                 code: code![0, 0, 1],
             },
             CodeDescriptor {
-                letter: 'c' as u8,
+                letter: b'c',
                 code: code![0, 1],
             },
             CodeDescriptor {
-                letter: 'd' as u8,
+                letter: b'd',
                 code: code![1, 0],
             },
             CodeDescriptor {
-                letter: 'e' as u8,
+                letter: b'e',
                 code: code![1, 1],
             },
         ];
@@ -251,18 +248,18 @@ mod test {
     fn decode_encoded_test() {
         let encoded = Header::encode(
             hashmap! {
-                'a' as u8 => 1,
-                'b' as u8 => 1,
-                'c' as u8 => 4,
-                'd' as u8 => 4,
-                'e' as u8 => 4,
+                b'a' => 1,
+                b'b' => 1,
+                b'c' => 4,
+                b'd' => 4,
+                b'e' => 4,
             },
             &hashmap! {
-                'a' as u8 => code![0, 0, 0],
-                'b' as u8 => code![0, 0, 1],
-                'c' as u8 => code![0, 1],
-                'd' as u8 => code![1, 0],
-                'e' as u8 => code![1, 1],
+                b'a' => code![0, 0, 0],
+                b'b' => code![0, 0, 1],
+                b'c' => code![0, 1],
+                b'd' => code![1, 0],
+                b'e' => code![1, 1],
             },
             2,
         );
@@ -275,23 +272,23 @@ mod test {
 
         let expected: Vec<CodeDescriptor> = vec![
             CodeDescriptor {
-                letter: 'a' as u8,
+                letter: b'a',
                 code: code![0, 0, 0],
             },
             CodeDescriptor {
-                letter: 'b' as u8,
+                letter: b'b',
                 code: code![0, 0, 1],
             },
             CodeDescriptor {
-                letter: 'c' as u8,
+                letter: b'c',
                 code: code![0, 1],
             },
             CodeDescriptor {
-                letter: 'd' as u8,
+                letter: b'd',
                 code: code![1, 0],
             },
             CodeDescriptor {
-                letter: 'e' as u8,
+                letter: b'e',
                 code: code![1, 1],
             },
         ];

@@ -38,7 +38,7 @@ pub fn write_iter_result<'a, E: Debug>(
     let mut buf_writer = BufWriter::new(File::create(output_file_path)?);
 
     for byte in iter {
-        buf_writer.write(&[byte.unwrap()])?;
+        buf_writer.write_all(&[byte.unwrap()])?;
     }
 
     Ok(())

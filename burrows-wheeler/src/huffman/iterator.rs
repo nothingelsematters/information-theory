@@ -74,10 +74,7 @@ impl<'a> Iterator for BitIterator<'a> {
             };
 
             if self.bit_size > 8 {
-                self.next = match self.input_iter.next() {
-                    None => None,
-                    Some(byte) => Some(byte),
-                };
+                self.next = self.input_iter.next();
             }
             self.current_position = 0;
         }

@@ -58,9 +58,9 @@ fn sort_cyclic_shifts(buffer: &[u8]) -> Vec<usize> {
             };
         }
 
-        for i in 0..classes {
+        (0..classes).for_each(|i| {
             count[i] = 0;
-        }
+        });
 
         for i in 0..len {
             count[c[pn[i]]] += 1;
@@ -106,7 +106,7 @@ pub fn reverse(buffer: &[u8], initial: Index) -> Vec<u8> {
 
 fn shift_vector(buffer: &[u8]) -> Vec<Index> {
     let mut sorted = buffer.to_vec();
-    sorted.sort();
+    sorted.sort_unstable();
     let mut used = HashMap::new();
     let mut reverse = Vec::with_capacity(buffer.len());
 

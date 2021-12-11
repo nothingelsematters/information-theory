@@ -5,9 +5,9 @@ use crate::result::{Error, Result};
 use bit_vec::BitVec;
 use std::collections::HashMap;
 
-pub fn decode<'a>(
-    input_iter: &'a mut Box<dyn Iterator<Item = u8>>,
-) -> Option<Result<(Box<DecoderIterator<'a>>, Index)>> {
+pub fn decode(
+    input_iter: &mut Box<dyn Iterator<Item = u8>>,
+) -> Option<Result<(Box<DecoderIterator<'_>>, Index)>> {
     let mut bit_iter = Box::new(BitIterator::new(input_iter, usize::MAX));
     let header = Header::decode(&mut bit_iter)?;
     bit_iter.bit_size(header.bit_size);
@@ -69,8 +69,7 @@ mod tests {
     #[test]
     fn decode_encoded() -> Result<()> {
         let input = "abbcccdddddeeoifhweag128138y2o".as_bytes();
-        let mut encoded_iter =
-            &mut Box::new(encode(|| Box::new(input.iter().map(|x| x.clone())), 0));
+        let mut encoded_iter = &mut Box::new(encode(|| Box::new(input.iter().copied()), 0));
         let (decoded_iter, _) = decode(&mut encoded_iter).unwrap()?;
         let decoded: Vec<u8> = decoded_iter.map(|x| x.unwrap()).collect();
         assert_eq!(input, &decoded);

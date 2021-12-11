@@ -24,7 +24,7 @@ impl Iterator for DecodeIterator {
 
     fn next(&mut self) -> Option<Self::Item> {
         match huffman::decode(&mut self.input_iter) {
-            None => return None,
+            None => None,
             Some(iter) => match iter {
                 Ok((iter, initial)) => {
                     let vec = match iter.collect::<Result<Vec<u8>>>() {

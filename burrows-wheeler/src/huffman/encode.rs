@@ -44,7 +44,7 @@ fn build_codes(letter_frequency: &HashMap<u8, u64>) -> HashMap<u8, BitVec> {
     }
 
     let mut codes = HashMap::new();
-    if queue.len() == 0 {
+    if queue.is_empty() {
         return codes;
     }
 
@@ -58,18 +58,18 @@ fn build_codes(letter_frequency: &HashMap<u8, u64>) -> HashMap<u8, BitVec> {
     }
 
     let (root, _) = queue.pop().unwrap();
-    update_codes(&mut codes, root, BitVec::new());
+    update_codes(&mut codes, *root, BitVec::new());
     codes
 }
 
-fn update_codes(codes: &mut HashMap<u8, BitVec>, node: Box<HuffmanNode>, code: BitVec) {
-    match *node {
+fn update_codes(codes: &mut HashMap<u8, BitVec>, node: HuffmanNode, code: BitVec) {
+    match node {
         HuffmanNode::Leaf(letter) => {
             codes.insert(letter, code);
         }
         HuffmanNode::InnerVertex(left, right) => {
-            update_codes(codes, left, vec_with(&code, false));
-            update_codes(codes, right, vec_with(&code, true));
+            update_codes(codes, *left, vec_with(&code, false));
+            update_codes(codes, *right, vec_with(&code, true));
         }
     }
 }
@@ -134,10 +134,7 @@ mod tests {
     macro_rules! code {
         ( $( $x:expr ),* ) => {
             {
-                let mut bytes = Vec::new();
-                $(
-                    bytes.push($x);
-                )*
+                let bytes = vec![$($x,)*];
                 let result: BitVec = bytes.iter().map(|x| *x != 0).collect();
                 result
             }
@@ -150,10 +147,10 @@ mod tests {
         let frequencies = count_frequency(input.bytes());
 
         let expected = hashmap! {
-            'a' as u8 => 1,
-            'b' as u8 => 2,
-            'c' as u8 => 3,
-            'd' as u8 => 4,
+            b'a' => 1,
+            b'b' => 2,
+            b'c' => 3,
+            b'd' => 4,
         };
 
         assert_eq!(expected, frequencies)
@@ -162,19 +159,19 @@ mod tests {
     #[test]
     fn build_codes_test() {
         let letter_frequency = hashmap! {
-            'a' as u8 => 1,
-            'b' as u8 => 2,
-            'c' as u8 => 3,
-            'd' as u8 => 4,
+            b'a' => 1,
+            b'b' => 2,
+            b'c' => 3,
+            b'd' => 4,
         };
 
         let codes = build_codes(&letter_frequency);
 
         let expected = hashmap! {
-            'a' as u8 => code![1, 1, 0],
-            'b' as u8 => code![1, 1, 1],
-            'c' as u8 => code![1, 0],
-            'd' as u8 => code![0],
+            b'a' => code![1, 1, 0],
+            b'b' => code![1, 1, 1],
+            b'c' => code![1, 0],
+            b'd' => code![0],
         };
 
         assert_eq!(expected, codes)
@@ -183,10 +180,10 @@ mod tests {
     #[test]
     fn encode_test() {
         let codes = hashmap! {
-            'a' as u8 => code![1, 1, 0],
-            'b' as u8 => code![1, 1, 1],
-            'c' as u8 => code![1, 0],
-            'd' as u8 => code![0],
+            b'a' => code![1, 1, 0],
+            b'b' => code![1, 1, 1],
+            b'c' => code![1, 0],
+            b'd' => code![0],
         };
 
         let input = "abbcccddddddddd";
