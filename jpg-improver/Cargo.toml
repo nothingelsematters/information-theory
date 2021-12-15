@@ -1,0 +1,12 @@
+[package]
+name = "jpg-improver"
+version = "0.1.0"
+authors = ["Simon <Simon Naumov>"]
+edition = "2018"
+
+[lib]
+name = "jpg_improver"
+test = true
+
+[dependencies]
+burrows-wheeler = { version = "0.1", path = "../burrows-wheeler" }
