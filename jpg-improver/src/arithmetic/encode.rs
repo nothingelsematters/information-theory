@@ -58,9 +58,9 @@ impl<'a> Encoder<'a> {
 
     fn encode_char(&mut self, char_index: usize) {
         let range = self.high - self.low + 1;
-        let total = self.frequency_model.get_total();
-        let char_low = self.frequency_model.get_low(char_index);
-        let char_high = self.frequency_model.get_high(char_index);
+        let total = self.frequency_model.total();
+        let char_low = self.frequency_model.low(char_index);
+        let char_high = self.frequency_model.high(char_index);
         self.high = self.low + range * char_high / total - 1;
         self.low += range * char_low / total;
 
@@ -85,7 +85,7 @@ impl<'a> Encoder<'a> {
 
     pub fn encode(&mut self) {
         for i in self.initial_data {
-            let char_index = self.frequency_model.char_to_index(*i as usize);
+            let char_index = self.frequency_model.char_to_index[*i as usize];
             self.encode_char(char_index);
             self.frequency_model.update(char_index);
         }

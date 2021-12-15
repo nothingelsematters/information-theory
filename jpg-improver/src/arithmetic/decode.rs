@@ -43,7 +43,7 @@ impl<'a> Decoder<'a> {
 
     fn get_symbol_index(&self, cum: usize) -> usize {
         let mut symbol_index = 1;
-        while self.friequencies.get_low(symbol_index) > cum {
+        while self.friequencies.low(symbol_index) > cum {
             symbol_index += 1;
         }
         symbol_index
@@ -51,12 +51,12 @@ impl<'a> Decoder<'a> {
 
     fn next_symbol_index(&mut self) -> usize {
         let range = self.high - self.low + 1;
-        let total = self.friequencies.get_total();
+        let total = self.friequencies.total();
         let cum = ((self.code_value - self.low + 1) * total - 1) / range;
 
         let symbol_index = self.get_symbol_index(cum);
-        let symbol_low = self.friequencies.get_low(symbol_index);
-        let symbol_high = self.friequencies.get_high(symbol_index);
+        let symbol_low = self.friequencies.low(symbol_index);
+        let symbol_high = self.friequencies.high(symbol_index);
         self.high = self.low + range * symbol_high / total - 1;
         self.low += range * symbol_low / total;
 
@@ -88,7 +88,7 @@ impl<'a> Decoder<'a> {
                 break;
             }
 
-            let char = self.friequencies.index_to_char(symbol_index);
+            let char = self.friequencies.index_to_char[symbol_index];
             self.decoded_data.push(char as u8);
             self.friequencies.update(symbol_index);
         }
