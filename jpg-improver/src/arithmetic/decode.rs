@@ -8,90 +8,86 @@ fn bit_iterator(data: &[u8]) -> impl Iterator<Item = bool> + '_ {
         .flat_map(|x| (0..8).rev().map(move |i| (x >> i) & 1 == 1))
 }
 
-pub struct Decoder<'a> {
-    encoded_data: Box<dyn Iterator<Item = bool> + 'a>,
-    pub decoded_data: Vec<u8>,
-    friequencies: Frequencies,
-    low: usize,
-    high: usize,
-    code_value: usize,
+fn slide(iter: &mut Box<impl Iterator<Item = bool>>, code_value: &mut usize) {
+    match iter.next() {
+        Some(next_bit) => *code_value = 2 * *code_value + (next_bit as usize),
+        None => *code_value *= 2,
+    }
 }
 
-impl<'a> Decoder<'a> {
-    pub fn new(encoded_data: &'a [u8]) -> Decoder<'a> {
-        let mut writer = Decoder {
-            encoded_data: Box::new(bit_iterator(encoded_data)),
-            decoded_data: Vec::new(),
-            friequencies: Frequencies::new(),
-            low: 0,
-            high: CODE_VALUE_MAX,
-            code_value: 0,
-        };
+fn get_symbol_index(frequencies: &mut Frequencies, cum: usize) -> usize {
+    let mut symbol_index = 1;
+    while frequencies.low(symbol_index) > cum {
+        symbol_index += 1;
+    }
+    symbol_index
+}
 
-        for _ in 0..CODE_VALUE_BITS {
-            writer.slide();
+fn next_symbol_index(
+    iter: &mut Box<impl Iterator<Item = bool>>,
+    frequencies: &mut Frequencies,
+    low: &mut usize,
+    high: &mut usize,
+    code_value: &mut usize,
+) -> usize {
+    let range = *high - *low + 1;
+    let total = frequencies.total();
+    let cum = ((*code_value - *low + 1) * total - 1) / range;
+
+    let symbol_index = get_symbol_index(frequencies, cum);
+    let symbol_low = frequencies.low(symbol_index);
+    let symbol_high = frequencies.high(symbol_index);
+    *high = *low + range * symbol_high / total - 1;
+    *low += range * symbol_low / total;
+
+    loop {
+        if *high < CODE_VALUE_HALF {
+        } else if *low >= CODE_VALUE_HALF {
+            *code_value -= CODE_VALUE_HALF;
+            *low -= CODE_VALUE_HALF;
+            *high -= CODE_VALUE_HALF;
+        } else if *low >= CODE_VALUE_FIRST_QUARTER && *high < CODE_VALUE_THIRD_QUARTER {
+            *code_value -= CODE_VALUE_FIRST_QUARTER;
+            *low -= CODE_VALUE_FIRST_QUARTER;
+            *high -= CODE_VALUE_FIRST_QUARTER;
+        } else {
+            break;
         }
-        writer
+        *low *= 2;
+        *high = 2 * *high + 1;
+        slide(iter, code_value);
     }
 
-    fn slide(&mut self) {
-        match self.encoded_data.next() {
-            Some(next_bit) => self.code_value = 2 * self.code_value + (next_bit as usize),
-            None => self.code_value *= 2,
-        }
+    symbol_index
+}
+
+pub fn decode(data: &[u8]) -> Vec<u8> {
+    let mut encoded_data = Box::new(bit_iterator(data));
+    let mut decoded_data = Vec::new();
+    let mut frequencies = Frequencies::new();
+    let mut low = 0;
+    let mut high = CODE_VALUE_MAX;
+    let mut code_value = 0;
+
+    for _ in 0..CODE_VALUE_BITS {
+        slide(&mut encoded_data, &mut code_value);
     }
 
-    fn get_symbol_index(&self, cum: usize) -> usize {
-        let mut symbol_index = 1;
-        while self.friequencies.low(symbol_index) > cum {
-            symbol_index += 1;
-        }
-        symbol_index
-    }
-
-    fn next_symbol_index(&mut self) -> usize {
-        let range = self.high - self.low + 1;
-        let total = self.friequencies.total();
-        let cum = ((self.code_value - self.low + 1) * total - 1) / range;
-
-        let symbol_index = self.get_symbol_index(cum);
-        let symbol_low = self.friequencies.low(symbol_index);
-        let symbol_high = self.friequencies.high(symbol_index);
-        self.high = self.low + range * symbol_high / total - 1;
-        self.low += range * symbol_low / total;
-
-        loop {
-            if self.high < CODE_VALUE_HALF {
-            } else if self.low >= CODE_VALUE_HALF {
-                self.code_value -= CODE_VALUE_HALF;
-                self.low -= CODE_VALUE_HALF;
-                self.high -= CODE_VALUE_HALF;
-            } else if self.low >= CODE_VALUE_FIRST_QUARTER && self.high < CODE_VALUE_THIRD_QUARTER {
-                self.code_value -= CODE_VALUE_FIRST_QUARTER;
-                self.low -= CODE_VALUE_FIRST_QUARTER;
-                self.high -= CODE_VALUE_FIRST_QUARTER;
-            } else {
-                break;
-            }
-            self.low *= 2;
-            self.high = 2 * self.high + 1;
-            self.slide();
+    loop {
+        let symbol_index = next_symbol_index(
+            &mut encoded_data,
+            &mut frequencies,
+            &mut low,
+            &mut high,
+            &mut code_value,
+        );
+        if symbol_index == EOF_SYMBOL {
+            break;
         }
 
-        symbol_index
+        let char = frequencies.index_to_char[symbol_index];
+        decoded_data.push(char as u8);
+        frequencies.update(symbol_index);
     }
-
-    pub fn decode(&mut self) -> &Vec<u8> {
-        loop {
-            let symbol_index = self.next_symbol_index();
-            if symbol_index == EOF_SYMBOL {
-                break;
-            }
-
-            let char = self.friequencies.index_to_char[symbol_index];
-            self.decoded_data.push(char as u8);
-            self.friequencies.update(symbol_index);
-        }
-        &self.decoded_data
-    }
+    decoded_data
 }

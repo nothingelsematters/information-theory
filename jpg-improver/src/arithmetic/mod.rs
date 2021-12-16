@@ -2,6 +2,9 @@ mod decode;
 mod encode;
 mod frequencies;
 
+pub use decode::decode;
+pub use encode::encode;
+
 const NUMBER_OF_CHARS: usize = 256;
 const CODE_VALUE_BITS: i32 = 16;
 const CODE_VALUE_MAX: usize = (1 << CODE_VALUE_BITS) - 1;
@@ -11,18 +14,6 @@ const CODE_VALUE_THIRD_QUARTER: usize = 3 * CODE_VALUE_FIRST_QUARTER;
 const MAX_FREQUENCY: usize = CODE_VALUE_FIRST_QUARTER - 1;
 const EOF_SYMBOL: usize = NUMBER_OF_CHARS + 1;
 const NUMBER_OF_SYMBOLS: usize = NUMBER_OF_CHARS + 1;
-
-pub fn encode(data: &[u8]) -> Vec<u8> {
-    let mut coder = encode::Encoder::new(data);
-    coder.encode();
-    coder.writer.data
-}
-
-pub fn decode(data: &[u8]) -> Vec<u8> {
-    let mut decoder = decode::Decoder::new(data);
-    decoder.decode();
-    decoder.decoded_data
-}
 
 #[cfg(test)]
 mod test {

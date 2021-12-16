@@ -27,70 +27,82 @@ impl BitWriter {
     }
 }
 
-pub struct Encoder<'a> {
-    pub writer: BitWriter,
-    initial_data: &'a [u8],
-    frequency_model: Frequencies,
-    low: usize,
-    high: usize,
-    bits_to_follow: i32,
+fn encode_following_bit(writer: &mut BitWriter, bits_to_follow: &mut i32, bit: bool) {
+    writer.write(bit);
+    while *bits_to_follow > 0 {
+        writer.write(!bit);
+        *bits_to_follow -= 1;
+    }
 }
 
-impl<'a> Encoder<'a> {
-    pub fn new(initial_data: &[u8]) -> Encoder {
-        Encoder {
-            writer: BitWriter::new(),
-            frequency_model: Frequencies::new(),
-            low: 0,
-            high: CODE_VALUE_MAX,
-            bits_to_follow: 0,
-            initial_data,
+fn encode_char(
+    writer: &mut BitWriter,
+    frequencies: &mut Frequencies,
+    low: &mut usize,
+    high: &mut usize,
+    bits_to_follow: &mut i32,
+    char_index: usize,
+) {
+    let range = *high - *low + 1;
+    let total = frequencies.total();
+    let char_low = frequencies.low(char_index);
+    let char_high = frequencies.high(char_index);
+    *high = *low + range * char_high / total - 1;
+    *low += range * char_low / total;
+
+    loop {
+        if *high < CODE_VALUE_HALF {
+            encode_following_bit(writer, bits_to_follow, false);
+        } else if *low >= CODE_VALUE_HALF {
+            encode_following_bit(writer, bits_to_follow, true);
+            *low -= CODE_VALUE_HALF;
+            *high -= CODE_VALUE_HALF;
+        } else if *low >= CODE_VALUE_FIRST_QUARTER && *high < CODE_VALUE_THIRD_QUARTER {
+            *bits_to_follow += 1;
+            *low -= CODE_VALUE_FIRST_QUARTER;
+            *high -= CODE_VALUE_FIRST_QUARTER;
+        } else {
+            break;
         }
+        *low *= 2;
+        *high = 2 * *high + 1;
+    }
+}
+
+pub fn encode(data: &[u8]) -> Vec<u8> {
+    let mut writer = BitWriter::new();
+    let mut frequencies = Frequencies::new();
+    let mut low = 0;
+    let mut high = CODE_VALUE_MAX;
+    let mut bits_to_follow = 0;
+
+    for i in data {
+        let char_index = frequencies.char_to_index[*i as usize];
+        encode_char(
+            &mut writer,
+            &mut frequencies,
+            &mut low,
+            &mut high,
+            &mut bits_to_follow,
+            char_index,
+        );
+        frequencies.update(char_index);
     }
 
-    fn encode_following_bit(&mut self, bit: bool) {
-        self.writer.write(bit);
-        while self.bits_to_follow > 0 {
-            self.writer.write(!bit);
-            self.bits_to_follow -= 1;
-        }
-    }
+    encode_char(
+        &mut writer,
+        &mut frequencies,
+        &mut low,
+        &mut high,
+        &mut bits_to_follow,
+        EOF_SYMBOL,
+    );
+    bits_to_follow += 1;
 
-    fn encode_char(&mut self, char_index: usize) {
-        let range = self.high - self.low + 1;
-        let total = self.frequency_model.total();
-        let char_low = self.frequency_model.low(char_index);
-        let char_high = self.frequency_model.high(char_index);
-        self.high = self.low + range * char_high / total - 1;
-        self.low += range * char_low / total;
-
-        loop {
-            if self.high < CODE_VALUE_HALF {
-                self.encode_following_bit(false);
-            } else if self.low >= CODE_VALUE_HALF {
-                self.encode_following_bit(true);
-                self.low -= CODE_VALUE_HALF;
-                self.high -= CODE_VALUE_HALF;
-            } else if self.low >= CODE_VALUE_FIRST_QUARTER && self.high < CODE_VALUE_THIRD_QUARTER {
-                self.bits_to_follow += 1;
-                self.low -= CODE_VALUE_FIRST_QUARTER;
-                self.high -= CODE_VALUE_FIRST_QUARTER;
-            } else {
-                break;
-            }
-            self.low *= 2;
-            self.high = 2 * self.high + 1;
-        }
-    }
-
-    pub fn encode(&mut self) {
-        for i in self.initial_data {
-            let char_index = self.frequency_model.char_to_index[*i as usize];
-            self.encode_char(char_index);
-            self.frequency_model.update(char_index);
-        }
-        self.encode_char(EOF_SYMBOL);
-        self.bits_to_follow += 1;
-        self.encode_following_bit(self.low >= CODE_VALUE_FIRST_QUARTER);
-    }
+    encode_following_bit(
+        &mut writer,
+        &mut bits_to_follow,
+        low >= CODE_VALUE_FIRST_QUARTER,
+    );
+    writer.data
 }
